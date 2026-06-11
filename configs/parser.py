@@ -253,6 +253,6 @@ class Parser:
 p = Parser("map.txt")
 try:
     d = p.parse()                
-    print(d)
+    print(d.dijkstra(d.start, d.end))
 except ParserError as e:
     print(e)

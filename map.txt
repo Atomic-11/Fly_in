@@ -17,7 +17,7 @@ hub: bottleneck 4 1 [color=yellow max_drones=2]
 hub: final_stretch1 5 0 [zone=priority color=cyan]
 hub: final_stretch2 5 1 [zone=priority color=cyan]
 hub: final_stretch3 5 2 [zone=priority color=cyan]
-end_hub: goal 6 1 [color=green max_drones=8]
+end_hub: goal 6 1 [color=green max_drones=8 ]
 
 # Main path connections
 connection: start-maze_a1 [max_link_capacity=3]
