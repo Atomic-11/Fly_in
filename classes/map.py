@@ -23,7 +23,7 @@ class Map:
             adj[c.hub_b.name].append((c.hub_a, weight))
         return adj
     
-    def dijkstra(self, start: Hub, end: Hub) -> List[Hub]:
+    def dijkstra(self, start: Hub, end: Hub, excluded: set[str]) -> List[str]:
         adj = self.get_adjacency_list()
         path = []
         came_from = {}
@@ -37,6 +37,8 @@ class Map:
             if cost > dist[hub]:
                 continue
             for next_hub, w in adj[hub]:
+                if next_hub.name in excluded:
+                    continue
                 if dist[next_hub.name] > cost + w:
                     came_from[next_hub.name] = hub
                     dist[next_hub.name] = cost + w
@@ -49,4 +51,17 @@ class Map:
             v = came_from.get(v)
         path.reverse()
         return path
-        
+    
+    def find_paths(self, start: Hub, end: Hub) -> List[List[str]]:
+        possible_paths = []
+        excluded = set()
+        while True:
+            path = self.dijkstra(start, end, excluded)
+            if not path:
+                break
+            possible_paths.append(path)
+            excluded.update(
+                hub for hub in path[1:-1]
+                if self.hubs[hub].max_drones == 1
+            )
+        return possible_paths
