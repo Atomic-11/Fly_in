@@ -17,10 +17,10 @@ class Map:
         for c in self.connections.values():
             if c.hub_a.zone_type == 'blocked' or c.hub_b.zone_type == 'blocked':
                 continue
-            weight = 2 if c.hub_b.zone_type == 'restricted' else 1
-            adj[c.hub_a.name].append((c.hub_b, weight))
-            weight = 2 if c.hub_a.zone_type == 'restricted'  else 1
-            adj[c.hub_b.name].append((c.hub_a, weight))
+            weight_b = 2 if c.hub_b.zone_type == 'restricted' else (0 if c.hub_b.zone_type == 'priority' else 1)
+            weight_a = 2 if c.hub_a.zone_type == 'restricted' else (0 if c.hub_a.zone_type == 'priority' else 1)
+            adj[c.hub_a.name].append((c.hub_b, weight_b))
+            adj[c.hub_b.name].append((c.hub_a, weight_a))
         return adj
     
     def dijkstra(self, start: Hub, end: Hub, excluded: set[str]) -> List[str]:
