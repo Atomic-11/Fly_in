@@ -57,7 +57,7 @@ class Map:
         excluded = set()
         while True:
             path = self.dijkstra(start, end, excluded)
-            if not path:
+            if not path or path in possible_paths:
                 break
             possible_paths.append(path)
             excluded.update(

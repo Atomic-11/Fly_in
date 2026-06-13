@@ -87,7 +87,7 @@ class Visualizer:
             clock.tick(60)
         pygame.quit()
 
-p = Parser(map="map.txt")
-map = p.parse()
-v = Visualizer(map)
-v.run()
+# p = Parser(map="map.txt")
+# map = p.parse()
+# v = Visualizer(map)
+# v.run()

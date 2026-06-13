@@ -12,4 +12,4 @@ class Drone:
     path_index: int
     arrived: bool
     in_transit: bool
-    direction: Optional[Hub]
+    destination: Optional[Hub]

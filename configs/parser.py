@@ -93,8 +93,6 @@ class Parser:
 
     def parse_hub(self, val: str, no: int, start: bool, end: bool):
             zone, max_drones, color = 'normal', 1, None
-            if '-' in val:
-                raise ParserError(f"line {no}: Dashes are forbidden!")
             if val.count('[') != val.count(']'):
                 raise ParserError(f"line {no}: Invalid brackets!")
             p = val.split("[", maxsplit=1)
@@ -109,7 +107,7 @@ class Parser:
                 else:
                     pairs = dict(self.check_metadata(cont, no, key='hub'))
                     color = pairs.get("color", None)
-                    max_drones = pairs.get("max_drones", 1)
+                    max_drones = int(pairs.get("max_drones", 1))
                     zone = pairs.get("zone", 'normal')
             else:
                 if len(val.strip().split(' ')) != 3:
@@ -121,6 +119,8 @@ class Parser:
             data = self.get_hub_data(p[0].lower().strip(), no)
             self.validate_after_parsing(data, no, key='hub')
             name = data['name']
+            if '-' in name:
+                raise ParserError(f"line {no}: Dashes are forbidden!")
             x = data['x']
             y = data['y']
             s = start if start else False
@@ -149,7 +149,7 @@ class Parser:
         self.validate_after_parsing(p[0].lower(), no, key='connection')
         hub_a = self.data.hubs.get(connect[0])
         hub_b = self.data.hubs.get(connect[1])
-        c = Connection(hub_a, hub_b, mlc, None)
+        c = Connection(hub_a, hub_b, mlc, [])
         self.data.cons[p[0].lower()] = c
 
     def check_metadata(self, cont: str, no: int, key: str):
@@ -248,11 +248,3 @@ class Parser:
                 if h.x == cont['x'] and h.y == cont['y']:
                     raise ParserError(f"line {no}: "
                                       "2 hubs cannot have same coordinates.")
-            
-
-p = Parser("map.txt")
-try:
-    d = p.parse()                
-    print(d.find_paths(d.start, d.end))
-except ParserError as e:
-    print(e)

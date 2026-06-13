@@ -2,48 +2,102 @@ from classes.map import Map
 from classes.drone import Drone
 from classes.hub import Hub
 from classes.connection import Connection
-from typing import List, Optional, Dict
+from typing import List, Dict, Tuple
 from ui.visualizer import Visualizer
+from configs.parser import Parser, ParserError
+from main.schedular import Schedular
 
 
 class Engine:
-
     
-    def simulate(self, drones: List[Drone], mp: Map):
-        
+    current_turn: int = 0
+    future_arv: Dict[Tuple[str, int], int] = {}
+    def simulate(self, mp: Map, drones: List[Drone]) -> List[str]:
+        for drone in drones:
+            mp.start.current_drones.append(drone)
         while not all(d.arrived for d in drones):
-            planned_moves = self.resolve_turn(drones, mp)
+            self.current_turn += 1
+            movements = self.resolve_turn(drones, mp)
+            # turns.append(movements)
+            line = " ".join(movements)
+            if line:
+                print(line)
+        # return turns
             
-                
-                
-    def resolve_turn(self, drones: List[Drone], mp: Map):
-        planned_arrivals: Dict[str, int] = {h.name: 0 for h in mp.hubs}
-        planned_departures: Dict[str, int] = {h.name: 0 for h in mp.hubs}
-        for i, d in enumerate(drones):
-            hub = d.path[d.path_index + 1]
-            if d.arrived:
+    def get_connection(self, mp: Map, a: str, b: str) -> Connection:
+        return (mp.connections.get(f"{a}-{b}") or
+                mp.connections.get(f"{b}-{a}"))
+    
+    def resolve_turn(self, drones: List[Drone], mp: Map) -> List[str]:
+        moves: List[str] = []
+        planned_arrivals: Dict[str, int] = {h: 0 for h in mp.hubs.keys()}
+        planned_departures: Dict[str, int] = {h: 0 for h in mp.hubs.keys()}
+        just_arrived = set()
+        # PASS 1: land all in-transit drones
+        for d in drones:
+            if d.arrived or not d.in_transit:
                 continue
-            if d.in_transit:
-                planned_arrivals[hub] += 1
-                mp.connections[d.cur_hub.name, hub].in_transit.remove(d)
-                d.in_transit = False
-                d.direction = None
-            available_space = planned_arrivals[hub] + len(mp.hubs[hub].current_drones - planned_departures[hub]
-            if available_space < mp.hubs[hub].max_drones:
-                if mp.hubs[hub].zone_type == 'restricted':
-                    if mp.connections[d.cur_hub.name, hub].max_link_capacity > planned_arrivals[hub]:
-                        mp.connections[d.cur_hub.name, hub].in_transit.append(d)
-                        d.in_transit = True
-                        d.direction = mp.hubs[hub]
-                    else:
-                        continue
+            if self.future_arv.get((d.destination.name, self.current_turn), 0) > 0:
+                con = self.get_connection(mp, d.cur_hub.name, d.destination.name)
+                self.future_arv[(d.destination.name, self.current_turn)] -= 1
+                d.cur_hub.current_drones.remove(d)
+                d.cur_hub = d.destination
+                d.cur_hub.current_drones.append(d)
                 d.path_index += 1
-                planned_arrivals[hub] += 1
+                d.in_transit = False
+                just_arrived.add(d.did)
+                con.in_transit.remove(d)
+                d.destination = None
                 planned_departures[d.cur_hub.name] += 1
-                d.cur_hub = mp.hubs[hub]
-            else:
+                moves.append(f"D{d.did}-{d.cur_hub.name}")
+                if d.cur_hub.name == mp.end.name:
+                    d.arrived = True
+
+        # PASS 2: move waiting drones
+        for d in drones:
+            if d.arrived or d.in_transit:
                 continue
-            if hub == mp.end:
-                d.arrived = True
-                
-        return planned_arrivals
+            if d.did in just_arrived:
+                continue
+            if self.current_turn < d.start_turn:
+                continue
+            hub = d.path[d.path_index + 1]
+            occupied = len(mp.hubs[hub].current_drones) + planned_arrivals[hub] - planned_departures[hub]
+            if occupied < mp.hubs[hub].max_drones:
+                if mp.hubs[hub].zone_type == 'restricted':
+                    future_turn = self.current_turn + 1
+                    con = self.get_connection(mp, d.cur_hub.name, hub)
+                    if (self.future_arv.get((hub, future_turn), 0) < mp.hubs[hub].max_drones
+                            and len(con.in_transit) < con.max_link_capacity):
+                        con.in_transit.append(d)
+                        self.future_arv[(hub, future_turn)] = self.future_arv.get((hub, future_turn), 0) + 1
+                        d.in_transit = True
+                        d.destination = mp.hubs[hub]
+                        moves.append(f"D{d.did}-{d.cur_hub.name}-{hub}")
+                else:
+                    d.cur_hub.current_drones.remove(d)
+                    d.path_index += 1
+                    planned_arrivals[hub] += 1
+                    planned_departures[d.cur_hub.name] += 1
+                    d.cur_hub = mp.hubs[hub]
+                    mp.hubs[hub].current_drones.append(d)
+                    moves.append(f"D{d.did}-{hub}")
+                    if hub == mp.end.name:
+                        d.arrived = True
+
+        return moves
+    
+    
+p = Parser("map.txt")
+try:
+    d = p.parse()
+    e = Engine()
+    s = Schedular()
+    paths = d.find_paths(d.start, d.end)
+    if not paths:
+        print("Error: no path found between start and end")
+        exit(1)
+    Drones = s.create_drones(d, d.find_paths(d.start, d.end))
+    e.simulate(d, Drones)
+except ParserError as e:
+    print(e)
