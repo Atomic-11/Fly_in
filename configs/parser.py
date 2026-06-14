@@ -112,10 +112,8 @@ class Parser:
             else:
                 if len(val.strip().split(' ')) != 3:
                     raise ParserError(f"line {no}: Unknown line format!")
-            if (start or end) and int(max_drones) < self.data.nb_drones:
-                raise ParserError(f"line {no}: "
-                                  "max_drones in  end/start hub "
-                                  "must be >= nb_drones.")
+            if (start or end):
+                max_drones = float('inf')
             data = self.get_hub_data(p[0].lower().strip(), no)
             self.validate_after_parsing(data, no, key='hub')
             name = data['name']
