@@ -5,7 +5,7 @@ from classes.connection import Connection
 from typing import List, Dict, Tuple
 from ui.visualizer import Visualizer
 from configs.parser import Parser, ParserError
-from main.schedular import Schedular
+from simulation.schedular import Schedular
 
 
 class Engine:
@@ -21,7 +21,13 @@ class Engine:
         while not all(d.arrived for d in drones):
             self.current_turn += 1
             movements = self.resolve_turn(drones, mp)
-            turn_state = {d.did: d.cur_hub.name for d in drones}
+            turn_state = {}
+            for d in drones:
+                if d.in_transit:
+                    # drone is on the connection
+                    turn_state[d.did] = f"{d.cur_hub.name}-{d.destination.name}"
+                else:
+                    turn_state[d.did] = d.cur_hub.name
             state.append(turn_state)
             line = " ".join(movements)
             if line:

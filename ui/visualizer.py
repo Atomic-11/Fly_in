@@ -1,13 +1,10 @@
 import pygame
 from classes.map import Map
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from configs.parser import Parser
 
-SCALE = 200
-OFFSET_X = 130
-OFFSET_Y = 600
 COLORS = {
-    None:       (180, 180, 180),  # light gray
+    None:       (180, 180, 180),
 
     "red":      (255, 80, 80),
     "green":    (80, 220, 100),
@@ -50,51 +47,85 @@ class Visualizer:
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.font = pygame.font.SysFont("monospace", 20)
         self.drone_font = pygame.font.SysFont("monospace", 16)
-        pygame.display.set_caption("FLY IN") 
-    
+        pygame.display.set_caption("FLY IN")
+
+        xs = [hub.x for hub in self.map.hubs.values()]
+        ys = [hub.y for hub in self.map.hubs.values()]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        padding = 150
+        range_x = max(max_x - min_x, 1)
+        range_y = max(max_y - min_y, 1)
+
+        self.scale_x = (self.width - 2 * padding) / range_x
+        self.scale_y = (self.height - 2 * padding) / range_y
+        self.offset_x = padding - min_x * self.scale_x
+        self.offset_y = padding - min_y * self.scale_y
+
+        effective_scale = min(self.scale_x, self.scale_y)
+        self.hub_radius = max(15, min(80, int(effective_scale * 0.3)))
+    def hub_pos(self, hub) -> Tuple[int, int]:
+        return (
+            int(hub.x * self.scale_x + self.offset_x),
+            int(hub.y * self.scale_y + self.offset_y)
+        )
+
     def draw(self, state: Dict[int, str]) -> None:
         self.screen.fill((0, 0, 0))
         self.draw_connections()
         self.draw_hubs()
         self.draw_drones(state)
         pygame.display.flip()
-    
+
     def draw_connections(self) -> None:
         for con in self.map.connections.values():
-            pygame.draw.line(self.screen, 
-                             (255, 255, 255), 
-                             (con.hub_a.x * SCALE + OFFSET_X,
-                              con.hub_a.y * SCALE + OFFSET_Y), 
-                             (con.hub_b.x * SCALE + OFFSET_X,
-                              con.hub_b.y * SCALE + OFFSET_Y),
-                             16)
-    
+            pygame.draw.line(
+                self.screen,
+                (255, 255, 255),
+                self.hub_pos(con.hub_a),
+                self.hub_pos(con.hub_b),
+                max(4, self.hub_radius // 5)
+            )
+
     def draw_hubs(self) -> None:
         for hub in self.map.hubs.values():
             color = COLORS.get(hub.color, COLORS[None])
-            pygame.draw.circle(self.screen,
-                               color,
-                               (hub.x * SCALE + OFFSET_X,
-                                hub.y * SCALE + OFFSET_Y),
-                               75)
-            
+            pygame.draw.circle(
+                self.screen,
+                color,
+                self.hub_pos(hub),
+                self.hub_radius
+            )
+
     def draw_drones(self, state: Dict[int, str]) -> None:
         from collections import defaultdict
-        hub_drones: Dict[str, List[int]] = defaultdict(list)
-        for drone_id, hub_name in state.items():
-            hub_drones[hub_name].append(drone_id)
-        
-        for hub_name, drone_ids in hub_drones.items():
-            hub = self.map.hubs[hub_name]
-            hx, hy = hub.x * SCALE + OFFSET_X, hub.y * SCALE + OFFSET_Y
+        positions: Dict[str, List[int]] = defaultdict(list)
+        for drone_id, position in state.items():
+            positions[position].append(drone_id)
+
+        for position, drone_ids in positions.items():
+            if '-' in position and position not in self.map.hubs:
+                parts = position.split('-')
+                hub_a = self.map.hubs[parts[0]]
+                hub_b = self.map.hubs[parts[1]]
+                ax, ay = self.hub_pos(hub_a)
+                bx, by = self.hub_pos(hub_b)
+                x, y = (ax + bx) // 2, (ay + by) // 2
+            else:
+                hub = self.map.hubs[position]
+                x, y = self.hub_pos(hub)
+
+            step = max(15, self.hub_radius // 2)
+            drone_radius = max(8, self.hub_radius // 4)
+
             for i, drone_id in enumerate(drone_ids):
-                offset_x = (i % 3) * 35 - 35
-                offset_y = (i // 3) * 35 - 15
-                x, y = hx + offset_x, hy + offset_y
-                pygame.draw.circle(self.screen, (255, 255, 0), (x, y), 20)
+                ox = (i % 3) * step - step
+                oy = (i // 3) * step - step // 2
+                pygame.draw.circle(self.screen, (110, 255, 0), (x + ox, y + oy), drone_radius)
                 label = self.font.render(f"D{drone_id}", True, (0, 0, 0))
-                self.screen.blit(label, (x - 12, y - 8))
-            
+                self.screen.blit(label, (x + ox - 12, y + oy - 8))
+
     def run(self, state) -> None:
         current_turn = 0
         clock = pygame.time.Clock()
