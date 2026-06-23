@@ -65,6 +65,7 @@ class Visualizer:
 
         effective_scale = min(self.scale_x, self.scale_y)
         self.hub_radius = max(15, min(80, int(effective_scale * 0.3)))
+
     def hub_pos(self, hub) -> Tuple[int, int]:
         return (
             int(hub.x * self.scale_x + self.offset_x),
@@ -141,9 +142,3 @@ class Visualizer:
             self.draw(state[current_turn])
             clock.tick(60)
         pygame.quit()
-
-# just to test:
-# p = Parser(map="map.txt")
-# map = p.parse()
-# v = Visualizer(map)
-# v.run()
