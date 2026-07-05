@@ -7,105 +7,133 @@ from ui.visualizer import Visualizer
 from configs.parser import Parser, ParserError
 from simulation.schedular import Schedular
 
-
 class Engine:
-    
-    current_turn: int = 0
+    cur_turn: int = 0
     future_arv: Dict[Tuple[str, int], int] = {}
 
-    def simulate(self, mp: Map, drones: List[Drone]) -> List[Dict[int, str]]:
+    def simulate(self, map: Map, drones: List[Drone]) -> List[Dict[int, str]]:
         state: List[Dict[int, str]] = []
-        for drone in drones:
-            mp.start.current_drones.append(drone)
+        for d in drones:
+            map.start.current_drones.append(d)
         state.append({d.did: d.cur_hub.name for d in drones})
         while not all(d.arrived for d in drones):
-            self.current_turn += 1
-            movements = self.resolve_turn(drones, mp)
-            turn_state = {}
+            self.cur_turn += 1
+            moves = self.resolve_turn(map, drones)
+            turn_state: Dict[int, str] = {}
             for d in drones:
                 if d.in_transit:
-                    turn_state[d.did] = f"{d.cur_hub.name}-{d.destination.name}"
+                    turn_state[d.did] = (
+                        f"{d.cur_hub.name}-{d.destination.name}"
+                    )
                 else:
                     turn_state[d.did] = d.cur_hub.name
             state.append(turn_state)
-            line = " ".join(movements)
+            line = " ".join(moves)
+            # infos = f"zone: {} capacity: {} occupency: {}"
             if line:
                 print(line)
         return state
-            
-    def get_connection(self, mp: Map, a: str, b: str) -> Connection:
-        return (mp.connections.get(f"{a}-{b}") or
-                mp.connections.get(f"{b}-{a}"))
-    
-    def resolve_turn(self, drones: List[Drone], mp: Map) -> List[str]:
-        moves: List[str] = []
-        planned_arrivals: Dict[str, int] = {h: 0 for h in mp.hubs.keys()}
-        planned_departures: Dict[str, int] = {h: 0 for h in mp.hubs.keys()}
-        just_arrived = set()
-        pending = []
 
+    def get_connection(
+        self,
+        map: Map,
+        a: str,
+        b: str,
+    ) -> Connection:
+        return (
+            map.connections.get(f"{a}-{b}")
+            or map.connections.get(f"{b}-{a}")
+        )
+
+    def resolve_turn(
+        self,
+        map: Map,
+        drones: List[Drone],
+    ) -> List[str]:
+
+        moves: List[str] = []
+
+        planned_arv: Dict[str, int] = {
+            h: 0 for h in map.hubs.keys()
+        }
+        planned_dep: Dict[str, int] = {
+            h: 0 for h in map.hubs.keys()
+        }
+
+        just_arrived = set()
+        pending: List[Tuple[Drone, Hub]] = []
+
+        # Process arrivals
         for d in drones:
             if d.arrived or not d.in_transit:
                 continue
-            if self.future_arv.get((d.destination.name, self.current_turn), 0) > 0:
-                con = self.get_connection(mp, d.cur_hub.name, d.destination.name)
-                self.future_arv[(d.destination.name, self.current_turn)] -= 1
+            if self.future_arv.get(
+                (d.destination.name, self.cur_turn), 0
+            ) > 0:
+                con = self.get_connection(
+                    map,
+                    d.destination.name,
+                    d.cur_hub.name,
+                )
+                self.future_arv[
+                    (d.destination.name, self.cur_turn)
+                ] -= 1
+                d.in_transit = False
                 d.cur_hub = d.destination
                 d.cur_hub.current_drones.append(d)
-                d.path_index += 1
-                d.in_transit = False
                 d.destination = None
+                d.path_index += 1
                 con.in_transit.remove(d)
-                just_arrived.add(d.did)
                 moves.append(f"D{d.did}-{d.cur_hub.name}")
-                if d.cur_hub.name == mp.end.name:
-                    d.arrived = True
+                just_arrived.add(d.did)
+            if d.cur_hub.name == map.end.name:
+                d.arrived = True
 
         for d in drones:
             if d.arrived or d.in_transit:
                 continue
             if d.did in just_arrived:
                 continue
-            if self.current_turn < d.start_turn:
+            if self.cur_turn < d.start_turn:
                 continue
             hub = d.path[d.path_index + 1]
             occupied = (
-                len(mp.hubs[hub].current_drones)
-                + planned_arrivals[hub]
-                - planned_departures[hub]
+                len(map.hubs[hub].current_drones)
+                + planned_arv[hub]
+                - planned_dep[hub]
             )
-            if occupied < mp.hubs[hub].max_drones:
-                if mp.hubs[hub].zone_type == 'restricted':
-                    future_turn = self.current_turn + 1
-                    con = self.get_connection(mp, d.cur_hub.name, hub)
-                    if (
-                        self.future_arv.get((hub, future_turn), 0) < mp.hubs[hub].max_drones
+            if occupied < map.hubs[hub].max_drones:
+                if map.hubs[hub].zone_type == "restricted":
+                    future_turn = self.cur_turn + 1
+                    con = self.get_connection(map, d.cur_hub.name, hub)
+                    if (self.future_arv.get((hub, future_turn), 0) < map.hubs[hub].max_drones
                         and len(con.in_transit) < con.max_link_capacity
                     ):
-                        con.in_transit.append(d)
                         self.future_arv[(hub, future_turn)] = (
                             self.future_arv.get((hub, future_turn), 0) + 1
                         )
                         d.cur_hub.current_drones.remove(d)
                         d.in_transit = True
-                        d.destination = mp.hubs[hub]
-                        moves.append(f"D{d.did}-{d.cur_hub.name}-{hub}")
+                        d.destination = map.hubs[hub]
+                        con.in_transit.append(d)
+                        moves.append(
+                            f"D{d.did}-{d.cur_hub.name}-{hub}"
+                        )
                 else:
-                    pending.append((d, mp.hubs[hub]))
-                    planned_arrivals[hub] += 1
-                    planned_departures[d.cur_hub.name] += 1
+                    pending.append((d, map.hubs[hub]))
+                    planned_arv[hub] += 1
+                    planned_dep[d.cur_hub.name] += 1
                     moves.append(f"D{d.did}-{hub}")
 
-        for drone, destination in pending:
-            drone.cur_hub.current_drones.remove(drone)
-            drone.path_index += 1
-            drone.cur_hub = destination
-            destination.current_drones.append(drone)
-            if destination.name == mp.end.name:
-                drone.arrived = True
+        for d, dest in pending:
+            d.cur_hub.current_drones.remove(d)
+            d.cur_hub = dest
+            d.cur_hub.current_drones.append(d)
+            d.path_index += 1
+            if d.cur_hub.name == map.end.name:
+                d.arrived = True
         return moves
-    
-    
+
 p = Parser("map.txt")
 try:
     d = p.parse()

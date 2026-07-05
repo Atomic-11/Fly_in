@@ -1,7 +1,6 @@
 import pygame
 from classes.map import Map
-from typing import List, Dict, Any, Tuple
-from configs.parser import Parser
+from typing import List, Dict, Tuple
 
 COLORS = {
     None:       (180, 180, 180),
@@ -38,6 +37,7 @@ COLORS = {
     "black":    (0, 0, 0),
 }
 
+
 class Visualizer:
     def __init__(self, map: Map) -> None:
         pygame.init()
@@ -55,11 +55,11 @@ class Visualizer:
         min_y, max_y = min(ys), max(ys)
 
         padding = 150
-        range_x = max(max_x - min_x, 1)
-        range_y = max(max_y - min_y, 1)
+        map_w = max(max_x - min_x, 1)
+        map_h = max(max_y - min_y, 1)
 
-        self.scale_x = (self.width - 2 * padding) / range_x
-        self.scale_y = (self.height - 2 * padding) / range_y
+        self.scale_x = (self.width - 2 * padding) / map_w
+        self.scale_y = (self.height - 2 * padding) / map_h
         self.offset_x = padding - min_x * self.scale_x
         self.offset_y = padding - min_y * self.scale_y
 
@@ -123,7 +123,10 @@ class Visualizer:
             for i, drone_id in enumerate(drone_ids):
                 ox = (i % 3) * step - step
                 oy = (i // 3) * step - step // 2
-                pygame.draw.circle(self.screen, (110, 255, 0), (x + ox, y + oy), drone_radius)
+                pygame.draw.circle(self.screen,
+                                   (110, 255, 0),
+                                   (x + ox, y + oy),
+                                   drone_radius)
                 label = self.font.render(f"D{drone_id}", True, (0, 0, 0))
                 self.screen.blit(label, (x + ox - 12, y + oy - 8))
 

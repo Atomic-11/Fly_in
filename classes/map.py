@@ -28,8 +28,8 @@ class Map:
         path = []
         came_from = {}
         dist = {v: float('inf') for v in adj}
-        dist[start.name] = 0
         pq = PriorityQueue()
+        dist[start.name] = 0
         came_from[start.name] = None
         pq.put((0, start.name))
         while not pq.empty():
@@ -51,7 +51,7 @@ class Map:
             v = came_from.get(v)
         path.reverse()
         return path
-    
+
     def find_paths(self, start: Hub, end: Hub) -> List[List[str]]:
         possible_paths = []
         excluded = set()
