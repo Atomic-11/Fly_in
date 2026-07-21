@@ -1,6 +1,6 @@
 from classes.connection import Connection
 from classes.hub import Hub
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Dict, Tuple
 from queue import PriorityQueue
 

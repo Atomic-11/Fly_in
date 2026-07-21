@@ -29,7 +29,6 @@ class Engine:
                     turn_state[d.did] = d.cur_hub.name
             state.append(turn_state)
             line = " ".join(moves)
-            # infos = f"zone: {} capacity: {} occupency: {}"
             if line:
                 print(line)
         return state
@@ -63,7 +62,6 @@ class Engine:
         just_arrived = set()
         pending: List[Tuple[Drone, Hub]] = []
 
-        # Process arrivals
         for d in drones:
             if d.arrived or not d.in_transit:
                 continue

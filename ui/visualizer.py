@@ -46,7 +46,6 @@ class Visualizer:
         self.height: int = 1440
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.font = pygame.font.SysFont("monospace", 20)
-        self.drone_font = pygame.font.SysFont("monospace", 16)
         pygame.display.set_caption("FLY IN")
 
         xs = [hub.x for hub in self.map.hubs.values()]
@@ -106,7 +105,7 @@ class Visualizer:
             positions[position].append(drone_id)
 
         for position, drone_ids in positions.items():
-            if '-' in position and position not in self.map.hubs:
+            if '-' in position:
                 parts = position.split('-')
                 hub_a = self.map.hubs[parts[0]]
                 hub_b = self.map.hubs[parts[1]]
@@ -117,12 +116,11 @@ class Visualizer:
                 hub = self.map.hubs[position]
                 x, y = self.hub_pos(hub)
 
-            step = max(15, self.hub_radius // 2)
-            drone_radius = max(8, self.hub_radius // 4)
-
+            space = max(15, self.hub_radius // 2)
+            drone_radius = max(16, self.hub_radius // 8)
             for i, drone_id in enumerate(drone_ids):
-                ox = (i % 3) * step - step
-                oy = (i // 3) * step - step // 2
+                ox = (i % 3) * space - space
+                oy = (i // 3) * space - space // 2
                 pygame.draw.circle(self.screen,
                                    (110, 255, 0),
                                    (x + ox, y + oy),
