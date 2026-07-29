@@ -63,7 +63,7 @@ class Visualizer:
         self.offset_y = padding - min_y * self.scale_y
 
         effective_scale = min(self.scale_x, self.scale_y)
-        self.hub_radius = max(15, min(80, int(effective_scale * 0.3)))
+        self.hub_radius = max(20, min(60, int(effective_scale * 0.3)))
 
     def hub_pos(self, hub) -> Tuple[int, int]:
         return (
@@ -72,7 +72,7 @@ class Visualizer:
         )
 
     def draw(self, state: Dict[int, str]) -> None:
-        self.screen.fill((0, 0, 0))
+        self.screen.fill((255, 255, 255))
         self.draw_connections()
         self.draw_hubs()
         self.draw_drones(state)
@@ -82,7 +82,7 @@ class Visualizer:
         for con in self.map.connections.values():
             pygame.draw.line(
                 self.screen,
-                (255, 255, 255),
+                (0, 0, 0),
                 self.hub_pos(con.hub_a),
                 self.hub_pos(con.hub_b),
                 max(4, self.hub_radius // 5)
@@ -95,7 +95,7 @@ class Visualizer:
                 self.screen,
                 color,
                 self.hub_pos(hub),
-                self.hub_radius
+                self.hub_radius + 15
             )
 
     def draw_drones(self, state: Dict[int, str]) -> None:
@@ -124,9 +124,9 @@ class Visualizer:
                 pygame.draw.circle(self.screen,
                                    (110, 255, 0),
                                    (x + ox, y + oy),
-                                   drone_radius)
+                                   drone_radius + 10)
                 label = self.font.render(f"D{drone_id}", True, (0, 0, 0))
-                self.screen.blit(label, (x + ox - 12, y + oy - 8))
+                self.screen.blit(label, (x - 12 + ox, y - 8 + oy))
 
     def run(self, state) -> None:
         current_turn = 0

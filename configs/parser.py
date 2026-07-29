@@ -148,7 +148,7 @@ class Parser:
         hub_a = self.data.hubs.get(connect[0])
         hub_b = self.data.hubs.get(connect[1])
         c = Connection(hub_a, hub_b, mlc, [])
-        self.data.cons[p[0].lower()] = c
+        self.data.cons[p[0].lower().strip()] = c
 
     def check_metadata(self, cont: str, no: int, key: str):
         METADATA = {'', 'max_drones', 'color', 'zone'}
